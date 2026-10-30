@@ -24,7 +24,19 @@ def main() -> None:
     mochi.add_task(completed_task)
     completed_task.mark_complete()
 
+    # Deliberately add fixed tasks out of chronological order.
+    biscuit.add_task(Task("Bath", 15, "medium", fixed_start_time=time(8, 15)))
+    mochi.add_task(Task("Breakfast appointment", 20, "high", fixed_start_time=time(8, 0)))
+
     scheduler = Scheduler(owner)
+    print("Tasks sorted by fixed time (automatic tasks last):")
+    for pet, task in scheduler.sort_by_time():
+        clock = task.fixed_start_time.strftime("%H:%M") if task.fixed_start_time else "Automatic"
+        print(f"{clock} | {pet.name}: {task.title}")
+    print("\nIncomplete tasks for Mochi:")
+    for pet, task in scheduler.filter_tasks(pet_name="Mochi", completed=False):
+        print(f"- {pet.name}: {task.title}")
+    print()
     plan = scheduler.generate_plan()
     print(f"Today's Schedule - {today.isoformat()}")
     print(f"Owner: {owner.name} | Available time: {owner.available_minutes} minutes")
