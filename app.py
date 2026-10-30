@@ -88,6 +88,8 @@ if owner.pets:
             format_func=lambda index: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"][index],
         )
         due_date = st.date_input("Due date (one-time tasks only)", value=owner.start_time.date())
+        use_fixed_time = st.checkbox("Use a fixed start time")
+        fixed_time = st.time_input("Fixed start time (when enabled)", value=time(8, 0))
         add_task = st.form_submit_button("Add task")
     if add_task:
         try:
@@ -96,6 +98,7 @@ if owner.pets:
                 description=description, frequency=frequency,
                 weekday=weekday if frequency == "weekly" else None,
                 due_date=due_date if frequency == "once" else None,
+                fixed_start_time=fixed_time if use_fixed_time else None,
             )
             owner.pets[pet_index].add_task(task)
             st.session_state.show_plan = False
@@ -113,6 +116,7 @@ if all_tasks:
             "Minutes": task.duration_minutes,
             "Priority": task.priority,
             "Frequency": task.frequency,
+            "Fixed start": task.fixed_start_time.strftime("%H:%M") if task.fixed_start_time else "Automatic",
             "Status": "Completed" if task.is_completed(planning_day) else (
                 "Due" if task.is_due(planning_day) else "Not due"
             ),
@@ -158,4 +162,6 @@ if st.session_state.show_plan:
         ])
     else:
         st.info("No unfinished tasks due on this date fit the available time.")
+    for warning in scheduler.detect_conflicts():
+        st.warning(warning)
     st.text(scheduler.explain_plan())
