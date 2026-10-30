@@ -60,13 +60,15 @@ I also compared the conflict-detection loops with a shorter list comprehension s
 
 **a. What you tested**
 
-- What behaviors did you test?
-- Why were these tests important?
+With AI's help, I expanded the test suite to 27 checks and ran it in my VS Code terminal. All 27 passed. The tests cover time sorting, filtering by pet and completion status, recurring tasks, overlapping appointments, and fitting tasks into the available time.
+
+I also checked cases that could easily cause problems, like a pet with no tasks, two tasks starting at the same time, a task that is too long, and completing the same task twice. The recurrence tests check that a new task is created for the correct date without duplicating it. These checks matter because an organized schedule is only useful if its times and task statuses are reliable.
 
 **b. Confidence**
 
-- How confident are you that your scheduler works correctly?
-- What edge cases would you test next if you had more time?
+Based on these results, I would rate confidence in the core system at 4 out of 5 stars. The automated tests passed, and I also checked the basic app actions in the browser. That gives me evidence that the main features work together, but passing these tests does not mean every possible situation has been covered.
+
+With more time, I would test larger task lists, schedules that cross midnight, and time-zone or daylight-saving changes. I would also add automated browser tests so the forms and session memory are checked along with the Python logic.
 
 ---
 
