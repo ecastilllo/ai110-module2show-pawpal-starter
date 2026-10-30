@@ -87,7 +87,7 @@ if owner.pets:
             "Weekday (weekly tasks only)", options=list(range(7)),
             format_func=lambda index: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"][index],
         )
-        due_date = st.date_input("Due date (one-time tasks only)", value=owner.start_time.date())
+        due_date = st.date_input("First due date (all frequencies)", value=owner.start_time.date())
         use_fixed_time = st.checkbox("Use a fixed start time")
         fixed_time = st.time_input("Fixed start time (when enabled)", value=time(8, 0))
         add_task = st.form_submit_button("Add task")
@@ -97,7 +97,7 @@ if owner.pets:
                 title.strip(), int(duration), priority,
                 description=description, frequency=frequency,
                 weekday=weekday if frequency == "weekly" else None,
-                due_date=due_date if frequency == "once" else None,
+                due_date=due_date,
                 fixed_start_time=fixed_time if use_fixed_time else None,
             )
             owner.pets[pet_index].add_task(task)
@@ -116,6 +116,7 @@ if all_tasks:
             "Minutes": task.duration_minutes,
             "Priority": task.priority,
             "Frequency": task.frequency,
+            "Due date": task.due_date.isoformat(),
             "Fixed start": task.fixed_start_time.strftime("%H:%M") if task.fixed_start_time else "Automatic",
             "Status": "Completed" if task.is_completed(planning_day) else (
                 "Due" if task.is_due(planning_day) else "Not due"
@@ -127,12 +128,13 @@ if all_tasks:
         task_index = st.selectbox(
             "Task to complete for the saved planning date",
             options=list(range(len(all_tasks))),
-            format_func=lambda index: f"{index + 1}. {all_tasks[index][0].name}: {all_tasks[index][1].title}",
+            format_func=lambda index: f"{index + 1}. {all_tasks[index][0].name}: {all_tasks[index][1].title} (due {all_tasks[index][1].due_date})",
         )
         complete = st.form_submit_button("Mark complete")
     if complete:
         try:
-            all_tasks[task_index][1].mark_complete(planning_day)
+            pet, task = all_tasks[task_index]
+            Scheduler(owner).mark_task_complete(pet, task, planning_day)
             st.session_state.show_plan = False
             st.rerun()
         except ValueError as error:
