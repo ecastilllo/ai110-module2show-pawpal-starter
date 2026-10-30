@@ -95,25 +95,41 @@ Next occurrence count: 1
 
 ## 🧪 Testing PawPal+
 
+Run the automated suite from the repository folder:
+
 ```powershell
-# Windows: install and run the initial tests
+# Windows
 py -m pip install pytest
 py -m pytest
 ```
 
-On other platforms, use `python -m pytest`. Optional coverage requires installing `pytest-cov` before running `python -m pytest --cov=pawpal_system`.
+The equivalent command when Python is available as `python` is `python -m pytest`.
+Optional coverage requires installing `pytest-cov` before running `python -m pytest --cov=pawpal_system`.
 
-Verified on Windows with Python 3.11.3 and pytest 9.2.0. The two initial tests cover task completion and adding a task to a pet.
+The 27 tests cover five core behaviors:
+
+- Chronological sorting, equal-time ordering, and flexible tasks placed last.
+- Filtering by pet and completion status, including unknown pets and empty lists.
+- Daily and weekly recurrence, one-time completion, duplicate prevention, future dates, and year-end rollover.
+- Conflict detection for identical starts and overlapping durations across pets, while allowing adjacent tasks.
+- Scheduling within available time, exact gap fits, priorities/preferences, zero budgets, oversized tasks, and repeated generation.
+
+The suite also checks task addition, independent pet task lists, completion status, and invalid durations. Fixed dates keep algorithm tests independent of the day they run.
+
+Successful run from the project folder on Windows:
 
 ```text
-collected 2 items
+========================== test session starts ===========================
+platform win32 -- Python 3.11.3, pytest-9.2.0, pluggy-1.7.0
+plugins: anyio-4.15.1
+collected 27 items
 
-tests\test_pawpal.py ..                                             [100%]
+tests\test_pawpal.py ...........................                    [100%]
 
-=========================== 2 passed in 0.01s ============================
+=========================== 27 passed in 0.06s ===========================
 ```
 
-These initial tests do not exhaustively verify the scheduler's recurrence and time-budget behavior.
+**Confidence level: 4/5 stars (★★★★☆).** The tested core behaviors pass, and the browser's basic pet, task, schedule, and completion flows were checked manually. This is not exhaustive verification: automated browser tests, large task collections, overnight windows, and time-zone/daylight-saving scenarios remain to be tested. Data remains session-only; saving across restarts is not implemented.
 
 ## 📐 Smarter Scheduling
 
@@ -137,6 +153,6 @@ Conflict detection keeps explicit loops for readability and stops the inner loop
 2. Run `py main.py` on Windows, or `python main.py` on other platforms.
 3. The demo creates two pets, adds fixed tasks out of order, and completes a daily water task to create its next occurrence.
 4. Read the time-sorted list, incomplete-task filter, intentional conflict warning, and next-occurrence check.
-5. Run `py -m pytest` to check completion and task addition.
+5. Run `py -m pytest` to run all 27 automated checks.
 
 For the browser app, run `py -m streamlit run app.py`. Add pets and tasks, optionally set fixed times, generate a plan, and mark tasks complete. The Owner object is stored in Streamlit session state between interactions. All data is in memory; restarting or reloading the session may reset it.
