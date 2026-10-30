@@ -16,6 +16,9 @@ if "owner" not in st.session_state:
     st.session_state.owner = Owner(
         "Jordan", 45, datetime.combine(date.today(), time(8, 0))
     )
+if "notice" in st.session_state:
+    st.success(st.session_state.pop("notice"))
+
 if "show_plan" not in st.session_state:
     st.session_state.show_plan = False
 
@@ -109,6 +112,14 @@ if owner.pets:
 all_tasks = owner.get_all_tasks()
 if all_tasks:
     planning_day = owner.start_time.date()
+    view_scheduler = Scheduler(owner)
+    pet_filter = st.selectbox("Filter by pet name", [None] + sorted({pet.name for pet in owner.pets}), format_func=lambda name: "All pets" if name is None else name)
+    status_filter = st.selectbox("Filter by status", ["All", "Incomplete", "Completed"])
+    completed_filter = {"All": None, "Incomplete": False, "Completed": True}[status_filter]
+    visible_tasks = view_scheduler.sort_by_time(view_scheduler.filter_tasks(pet_name=pet_filter, completed=completed_filter))
+    st.caption(f"Showing {len(visible_tasks)} of {len(all_tasks)} occurrences, sorted by fixed time. Automatic tasks appear last. Filters affect this list only.")
+    if not visible_tasks:
+        st.info("No tasks match these filters.")
     st.table([
         {
             "Pet": pet.name,
@@ -122,8 +133,33 @@ if all_tasks:
                 "Due" if task.is_due(planning_day) else "Not due"
             ),
         }
-        for pet, task in all_tasks
+        for pet, task in visible_tasks
     ])
+    editable = [(pet, task) for pet, task in all_tasks if not task.completed]
+    if editable:
+        with st.expander("Edit a task or resolve a time conflict"):
+            edit_index = st.selectbox(
+                "Occurrence to edit", range(len(editable)),
+                format_func=lambda i: f"{i + 1}. {editable[i][0].name}: {editable[i][1].title} (due {editable[i][1].due_date})",
+            )
+            edit_pet, edit_task = editable[edit_index]
+            # Different form keys keep values from a previously selected task separate.
+            with st.form(f"edit_task_{id(edit_task)}"):
+                edit_title = st.text_input("Title", value=edit_task.title)
+                edit_minutes = st.number_input("Minutes", min_value=1, value=edit_task.duration_minutes)
+                edit_priority = st.selectbox("Task priority", ["high", "medium", "low"], index=["high", "medium", "low"].index(edit_task.priority))
+                edit_fixed = st.checkbox("Keep a fixed time", value=edit_task.fixed_start_time is not None)
+                edit_clock = st.time_input("Appointment time", value=edit_task.fixed_start_time or time(8))
+                save_edit = st.form_submit_button("Save task changes")
+            if save_edit:
+                try:
+                    edit_task.update_details(edit_title.strip(), int(edit_minutes), edit_priority)
+                    edit_task.fixed_start_time = edit_clock if edit_fixed else None
+                    st.session_state.show_plan = False
+                    st.session_state.notice = f"Updated {edit_task.title}. Generate the schedule to check the new time."
+                    st.rerun()
+                except ValueError as error:
+                    st.error(str(error))
     with st.form("complete_task"):
         task_index = st.selectbox(
             "Task to complete for the saved planning date",
@@ -134,7 +170,8 @@ if all_tasks:
     if complete:
         try:
             pet, task = all_tasks[task_index]
-            Scheduler(owner).mark_task_complete(pet, task, planning_day)
+            upcoming = Scheduler(owner).mark_task_complete(pet, task, planning_day)
+            st.session_state.notice = f"Completed {task.title}." + (f" Next occurrence: {upcoming.due_date}." if upcoming else "")
             st.session_state.show_plan = False
             st.rerun()
         except ValueError as error:
@@ -151,6 +188,13 @@ if st.button("Generate schedule", disabled=not all_tasks):
 if st.session_state.show_plan:
     scheduler = Scheduler(owner)
     plan = scheduler.generate_plan()
+    conflicts = scheduler.detect_conflicts()
+    if conflicts:
+        st.warning("This plan has overlapping appointments. Open ‘Edit a task or resolve a time conflict’, change one fixed time, then generate again.")
+        for warning in conflicts:
+            st.warning(warning)
+    elif plan:
+        st.success("Your plan is ready. No overlapping appointments were found.")
     if plan:
         st.table([
             {
@@ -164,6 +208,5 @@ if st.session_state.show_plan:
         ])
     else:
         st.info("No unfinished tasks due on this date fit the available time.")
-    for warning in scheduler.detect_conflicts():
-        st.warning(warning)
-    st.text(scheduler.explain_plan())
+    with st.expander("Why this plan?", expanded=bool(conflicts)):
+        st.text(scheduler.explain_plan())
