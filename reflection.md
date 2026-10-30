@@ -46,13 +46,17 @@ I also compared the conflict-detection loops with a shorter list comprehension s
 
 **a. How you used AI**
 
-- How did you use AI tools during this project (for example: design brainstorming, debugging, refactoring)?
-- What kinds of prompts or questions were most helpful?
+I used Codex to help design the classes, create the UML, write and revise the code, generate tests, and update the project files on GitHub. The most useful workflow was going through the assignment one phase at a time. I asked the assistant to stop when it needed my input, then ran the commands in VS Code and shared the results or browser screenshots.
+
+Questions that compared choices were especially useful, like asking whether actual clock times fit the README better than a simple task list. The assistant also explained tradeoffs before we chose optional fixed times, overlap warnings, and explicit loops for readability.
+
+Although the assignment suggested separate chats, I kept the phases in one conversation. We used phase checkpoints and test results to stay organized, and the earlier decisions stayed available as context. I did not use separate chat sessions, so I cannot claim that workflow improved this project.
 
 **b. Judgment and verification**
 
-- Describe one moment where you did not accept an AI suggestion as-is.
-- How did you evaluate or verify what the AI suggested?
+The first AI draft used an ordered list of tasks. I asked how that compared with the README's sample output and chose actual clock times instead. I wanted the app to provide more organization and support a pet's routine. Later, I chose to keep readable conflict-detection loops after comparing them with a shorter alternative.
+
+I checked the work by running the CLI demo and pytest in VS Code and testing the app in the browser. For example, I confirmed that a completed task disappeared from the current schedule and that overlapping appointments produced a warning. I used the results to decide whether we were ready for the next phase.
 
 ---
 
