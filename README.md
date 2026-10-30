@@ -1,46 +1,51 @@
-# PawPal+ (Module 2 Project)
+# PawPal+
 
-You are building **PawPal+**, a Streamlit app that helps a pet owner plan care tasks for their pet.
+PawPal+ is a Streamlit pet-care planner with a Python backend and a terminal demo. It helps an owner organize care across multiple pets, assign clock times, and see why tasks were selected or skipped.
 
-## Scenario
+## Features
 
-A busy pet owner needs help staying consistent with pet care. They want an assistant that can:
+- Manage multiple pets and their individual care tasks.
+- Add tasks with descriptions, durations, priorities, due dates, and optional fixed times.
+- Edit an unfinished occurrence's title, duration, priority, and fixed time.
+- View tasks sorted by fixed time and filter the list by pet name or completion status.
+- Reserve fixed appointments and place flexible tasks into remaining gaps.
+- Display warnings for overlapping appointments, including appointments for different pets.
+- Mark tasks complete and create the next daily or weekly occurrence without duplicates.
+- Retain data during Streamlit interactions using session state.
+- Verify the backend with 27 automated tests.
 
-- Track pet care tasks (walks, feeding, meds, enrichment, grooming, etc.)
-- Consider constraints (time available, priority, owner preferences)
-- Produce a daily plan and explain why it chose that plan
+## Setup and run
 
-Your job is to design the system first (UML), then implement the logic in Python, then connect it to the Streamlit UI.
+Requires Python 3.10 or newer. From the repository folder on Windows:
 
-## What you will build
-
-Your final app should:
-
-- Let a user enter basic owner + pet info
-- Let a user add/edit tasks (duration + priority at minimum)
-- Generate a daily schedule/plan based on constraints and priorities
-- Display the plan clearly (and ideally explain the reasoning)
-- Include tests for the most important scheduling behaviors
-
-## Getting started
-
-### Setup
-
-```bash
-python -m venv .venv
-source .venv/bin/activate  # Windows: .venv\Scripts\activate
-pip install -r requirements.txt
+```powershell
+py -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+.\.venv\Scripts\python.exe -m streamlit run app.py
 ```
 
-### Suggested workflow
+Open the local URL printed in the terminal. Stop the server with Ctrl+C.
 
-1. Read the scenario carefully and identify requirements and edge cases.
-2. Draft a UML diagram (classes, attributes, methods, relationships).
-3. Convert UML into Python class stubs (no logic yet).
-4. Implement scheduling logic in small increments.
-5. Add tests to verify key behaviors.
-6. Connect your logic to the Streamlit UI in `app.py`.
-7. Refine UML so it matches what you actually built.
+For macOS/Linux:
+
+```bash
+python3 -m venv .venv
+.venv/bin/python -m pip install -r requirements.txt
+.venv/bin/python -m streamlit run app.py
+```
+
+If using an existing environment on Windows, run `py -m pip install -r requirements.txt`, then `py -m streamlit run app.py`. The CLI demo runs with `py main.py` (or the virtual environment's Python executable).
+
+## Architecture
+
+- `pawpal_system.py`: Owner, Pet, Task, and Scheduler classes.
+- `app.py`: Streamlit forms, session state, filtered tables, and conflict warnings.
+- `main.py`: repeatable terminal demonstration.
+- `tests/test_pawpal.py`: automated backend checks.
+- [Final UML source](diagrams/uml_final.mmd): final public class attributes, methods, and relationships.
+- [Reflection](reflection.md): design decisions, tradeoffs, testing, and AI collaboration.
+
+An Owner contains Pets, each Pet holds Task occurrences, and the Scheduler gathers those tasks to build and explain a plan. Completing a recurring Task produces a new occurrence, which the Scheduler attaches to the correct Pet.
 
 ## 🖥️ Sample Output
 
@@ -147,12 +152,21 @@ Use `Scheduler.mark_task_complete(pet, task)` in the UI and CLI: it both complet
 
 Conflict detection keeps explicit loops for readability and stops the inner loop once later start times cannot overlap. Its worst-case cost is O(n²), which is acceptable for a small daily schedule. Time sorting is O(n log n), and filtering is O(n). Warnings do not automatically resolve conflicts. Reserved clock time counts the union of occupied intervals, so overlaps are counted only once.
 
-## 📸 Demo Walkthrough
+## Demo Walkthrough
 
-1. Open a terminal in the repository folder with Python 3.10 or newer available.
-2. Run `py main.py` on Windows, or `python main.py` on other platforms.
-3. The demo creates two pets, adds fixed tasks out of order, and completes a daily water task to create its next occurrence.
-4. Read the time-sorted list, incomplete-task filter, intentional conflict warning, and next-occurrence check.
-5. Run `py -m pytest` to run all 27 automated checks.
+1. Launch the browser app and save the owner's name, planning date, start time, available minutes, and optional preferred task titles.
+2. Add a pet, such as Moosh Moosh. Add another pet to demonstrate planning across pets.
+3. Add a daily Feeding task lasting 10 minutes. For weekly tasks, choose a first due date that matches the selected weekday.
+4. Use the pet-name and completion filters to narrow the task list. The list is sorted by fixed clock time, with automatic tasks last; filters do not change which tasks the planner considers.
+5. Generate a schedule. Fixed appointments are reserved first; flexible tasks use priority and preferences to fit into gaps.
+6. Add two fixed tasks that overlap, such as an 08:00–08:20 feeding and an 08:10–08:20 bath. Generate again to see named warnings with both time ranges.
+7. Open **Edit a task or resolve a time conflict**, move the bath to 08:20, save, and regenerate. Adjacent appointments do not overlap.
+8. Mark a daily task complete for the saved planning date. The completed occurrence stays visible, and a new unfinished occurrence appears with the following day's due date.
+9. Open **Why this plan?** to see selection, skipping, and conflict explanations.
+10. Run `py main.py` for the CLI demonstration shown above, or `py -m pytest` for the 27 backend checks.
 
-For the browser app, run `py -m streamlit run app.py`. Add pets and tasks, optionally set fixed times, generate a plan, and mark tasks complete. The Owner object is stored in Streamlit session state between interactions. All data is in memory; restarting or reloading the session may reset it.
+## Current limits
+
+Data is kept in memory. Reloading the browser or restarting the app can reset the session. Fixed-time conflicts are reported, not automatically resolved. Occurrence editing does not change an entire recurrence series. Filtering by a pet name includes all pets with that same name. Overnight and time-zone/daylight-saving scenarios are not yet verified.
+
+The Phase 6 UI passed Python syntax validation. Automated Streamlit interaction checks could not start in the agent environment because local socket initialization stalled; manual verification of the new filters and edit form is pending. The 27 backend tests are separate from UI verification.
