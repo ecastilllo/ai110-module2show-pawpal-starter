@@ -7,7 +7,7 @@ Data and completion history are kept in memory. Schedule entries contain
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, time, timedelta
 from typing import Literal
 
 
@@ -39,10 +39,13 @@ class Task:
     frequency: Frequency = "daily"
     weekday: int | None = None
     due_date: date | None = None
+    fixed_start_time: time | None = None
     completed_dates: set[date] = field(default_factory=set, init=False, repr=False)
 
     def __post_init__(self) -> None:
         """Validate task details and set a default date for one-time tasks."""
+        if self.fixed_start_time is not None and (not isinstance(self.fixed_start_time, time) or self.fixed_start_time.tzinfo is not None):
+            raise ValueError("Fixed start time must be a local clock time.")
         self._validate_details(self.title, self.duration_minutes, self.priority)
         if not isinstance(self.description, str):
             raise ValueError("Description must be text.")
@@ -202,59 +205,117 @@ class Scheduler:
         self.schedule: list[tuple[Pet, Task, datetime, datetime]] = []
         self.explanation: str = ""
 
+    def sort_by_time(self, tasks=None) -> list[tuple[Pet, Task]]:
+        """Return pet/task pairs ordered by fixed time, with flexible tasks last."""
+        pairs = self.owner.get_all_tasks() if tasks is None else list(tasks)
+        return sorted(pairs, key=lambda pair: (
+            pair[1].fixed_start_time is None,
+            pair[1].fixed_start_time or time.min,
+        ))
+
+    def filter_tasks(self, pet_name=None, completed=None, on_date=None) -> list[tuple[Pet, Task]]:
+        """Filter by pet name and/or completion status on the planning date."""
+        day = self.owner.start_time.date() if on_date is None else on_date
+        pairs = self.owner.get_all_tasks()
+        if pet_name is not None:
+            pairs = [(pet, task) for pet, task in pairs
+                     if pet.name.casefold() == pet_name.strip().casefold()]
+        if completed is not None:
+            pairs = [(pet, task) for pet, task in pairs
+                     if task.is_completed(day) == completed]
+        return pairs
+
+    def detect_conflicts(self, schedule=None) -> list[str]:
+        """Warn about overlapping intervals across all pets; touching endpoints are allowed."""
+        entries = sorted(self.schedule if schedule is None else schedule,
+                         key=lambda entry: entry[2])
+        warnings = []
+        for index, first in enumerate(entries):
+            for second in entries[index + 1:]:
+                if second[2] >= first[3]:
+                    break
+                if first[2] < second[3] and second[2] < first[3]:
+                    warnings.append(
+                        f"Conflict: {first[0].name}: {first[1].title} "
+                        f"({first[2]:%H:%M}-{first[3]:%H:%M}) overlaps "
+                        f"{second[0].name}: {second[1].title} "
+                        f"({second[2]:%H:%M}-{second[3]:%H:%M})."
+                    )
+        return warnings
+
     def generate_plan(self) -> list[tuple[Pet, Task, datetime, datetime]]:
-        """Schedule due tasks by priority and preference while respecting the time budget."""
-        plan_date = self.owner.start_time.date()
-        remaining = self.owner.available_minutes
-        _require_minutes(remaining, "Available minutes", 0)
-        current_time = self.owner.start_time
+        """Reserve fixed appointments and fit flexible tasks into the remaining gaps."""
+        window_start = self.owner.start_time
+        window_end = window_start + timedelta(minutes=self.owner.available_minutes)
+        plan_date = window_start.date()
+        _require_minutes(self.owner.available_minutes, "Available minutes", 0)
         self.schedule = []
-        reasons = [
-            "Tasks are considered by priority (high to low), then preferred titles; "
-            "other ties keep pet/task entry order."
-        ]
+        reasons = ["Fixed times are reserved first. Flexible tasks use priority, "
+                   "then preferred titles, then pet/task entry order."]
         preferred = {title.strip().casefold() for title in self.owner.preferences}
-        all_tasks = self.owner.get_all_tasks()
-        candidates: list[tuple[Pet, Task]] = []
-        for pet, task in all_tasks:
+        due = []
+        for pet, task in self.owner.get_all_tasks():
             label = f"{pet.name}: {task.title}"
             if task.is_completed(plan_date):
                 reasons.append(f"Skipped {label}: already completed.")
             elif not task.is_due(plan_date):
                 reasons.append(f"Skipped {label}: not due on {plan_date.isoformat()}.")
             else:
-                candidates.append((pet, task))
-        candidates.sort(
-            key=lambda pair: (
-                PRIORITY_ORDER[pair[1].priority],
-                pair[1].title.strip().casefold() not in preferred,
-            )
-        )
-        for pet, task in candidates:
-            label = f"{pet.name}: {task.title}"
-            if task.duration_minutes > remaining:
-                reasons.append(
-                    f"Skipped {label}: needs {task.duration_minutes} min; "
-                    f"only {remaining} min remain."
-                )
+                due.append((pet, task))
+        flexible = []
+        for pet, task in self.sort_by_time(due):
+            if task.fixed_start_time is None:
+                flexible.append((pet, task))
                 continue
-            end_time = current_time + timedelta(minutes=task.duration_minutes)
-            self.schedule.append((pet, task, current_time, end_time))
-            preference_note = (
-                "; preferred title" if task.title.strip().casefold() in preferred else ""
-            )
-            reasons.append(
-                f"Selected {label}: {task.priority} priority{preference_note}; "
-                f"{task.duration_minutes} min fits the remaining time."
-            )
-            current_time = end_time
-            remaining -= task.duration_minutes
-        if not all_tasks:
-            reasons.append("No care tasks have been added.")
-        elif not self.schedule:
-            reasons.append("No unfinished, due tasks fit the available time.")
-        used = self.owner.available_minutes - remaining
-        reasons.append(f"Time used: {used}/{self.owner.available_minutes} min; {remaining} min remaining.")
+            start = datetime.combine(plan_date, task.fixed_start_time,
+                                     tzinfo=window_start.tzinfo)
+            end = start + timedelta(minutes=task.duration_minutes)
+            if start < window_start or end > window_end:
+                reasons.append(f"Skipped {pet.name}: {task.title}: fixed time is outside the planning window.")
+                continue
+            self.schedule.append((pet, task, start, end))
+            reasons.append(f"Reserved {pet.name}: {task.title} at {start:%H:%M}.")
+        flexible.sort(key=lambda pair: (
+            PRIORITY_ORDER[pair[1].priority],
+            pair[1].title.strip().casefold() not in preferred,
+        ))
+        for pet, task in flexible:
+            duration = timedelta(minutes=task.duration_minutes)
+            start = window_start
+            for entry in sorted(self.schedule, key=lambda item: item[2]):
+                if start + duration <= entry[2]:
+                    break
+                if start < entry[3]:
+                    start = entry[3]
+            end = start + duration
+            if end <= window_end:
+                self.schedule.append((pet, task, start, end))
+                reasons.append(f"Selected {pet.name}: {task.title}: "
+                               f"{task.priority} priority; fits an available gap.")
+            else:
+                reasons.append(f"Skipped {pet.name}: {task.title}: no "
+                               f"{task.duration_minutes}-minute gap remains.")
+        self.schedule.sort(key=lambda entry: entry[2])
+        warnings = self.detect_conflicts()
+        reasons.extend(warnings)
+        if warnings:
+            reasons.append("Resolve the overlapping fixed times before following this plan.")
+        if not self.schedule:
+            reasons.append("No unfinished, due tasks fit the planning window.")
+        # Merge intervals so overlapping reservations are not counted twice.
+        occupied = timedelta()
+        merged_start = merged_end = None
+        for _, _, start, end in self.schedule:
+            if merged_end is None or start > merged_end:
+                if merged_end is not None:
+                    occupied += merged_end - merged_start
+                merged_start, merged_end = start, end
+            else:
+                merged_end = max(merged_end, end)
+        if merged_end is not None:
+            occupied += merged_end - merged_start
+        minutes = int(occupied.total_seconds() / 60)
+        reasons.append(f"Reserved clock time: {minutes}/{self.owner.available_minutes} min.")
         self.explanation = "\n".join(reasons)
         return list(self.schedule)
 
