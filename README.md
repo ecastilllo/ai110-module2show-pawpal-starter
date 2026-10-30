@@ -44,25 +44,53 @@ pip install -r requirements.txt
 
 ## 🖥️ Sample Output
 
-Captured from running `py main.py` on Windows. The demo uses the current date when run.
+Captured from the Phase 4 CLI demo. Dates follow the day the demo is run. The overlapping appointments are intentional, to demonstrate warnings.
 
 ```text
+Tasks sorted by fixed time (automatic tasks last):
+08:00 | Mochi: Breakfast appointment | due 2026-10-29 | completed=False
+08:15 | Biscuit: Bath | due 2026-10-29 | completed=False
+Automatic | Biscuit: Morning walk | due 2026-10-29 | completed=False
+Automatic | Biscuit: Grooming | due 2026-10-29 | completed=False
+Automatic | Mochi: Feeding | due 2026-10-29 | completed=False
+Automatic | Mochi: Enrichment | due 2026-10-29 | completed=False
+Automatic | Mochi: Restock food | due 2026-10-29 | completed=False
+Automatic | Mochi: Refresh water | due 2026-10-29 | completed=True
+Automatic | Mochi: Refresh water | due 2026-10-30 | completed=False
+
+Incomplete tasks for Mochi:
+- Mochi: Feeding | due 2026-10-29
+- Mochi: Enrichment | due 2026-10-29
+- Mochi: Restock food | due 2026-10-29
+- Mochi: Refresh water | due 2026-10-30
+- Mochi: Breakfast appointment | due 2026-10-29
+
 Today's Schedule - 2026-10-29
 Owner: Jordan | Available time: 45 minutes
 
-08:00-08:10 | Mochi (cat) | Feeding (10 min) [priority: high, frequency: daily]
-08:10-08:35 | Biscuit (dog) | Morning walk (25 min) [priority: high, frequency: daily]
-08:35-08:45 | Mochi (cat) | Enrichment (10 min) [priority: medium, frequency: daily]
+08:00-08:20 | Mochi (cat) | Breakfast appointment (20 min) [priority: high, frequency: daily]
+08:15-08:30 | Biscuit (dog) | Bath (15 min) [priority: medium, frequency: daily]
+08:30-08:40 | Mochi (cat) | Feeding (10 min) [priority: high, frequency: daily]
 
 Why this plan:
-Tasks are considered by priority (high to low), then preferred titles; other ties keep pet/task entry order.
+Fixed times are reserved first. Flexible tasks use priority, then preferred titles, then pet/task entry order.
 Skipped Mochi: Refresh water: already completed.
-Selected Mochi: Feeding: high priority; preferred title; 10 min fits the remaining time.
-Selected Biscuit: Morning walk: high priority; 25 min fits the remaining time.
-Selected Mochi: Enrichment: medium priority; 10 min fits the remaining time.
-Skipped Biscuit: Grooming: needs 20 min; only 0 min remain.
-Skipped Mochi: Restock food: needs 15 min; only 0 min remain.
-Time used: 45/45 min; 0 min remaining.
+Skipped Mochi: Refresh water: not due on 2026-10-29.
+Reserved Mochi: Breakfast appointment at 08:00.
+Reserved Biscuit: Bath at 08:15.
+Selected Mochi: Feeding: high priority; fits an available gap.
+Skipped Biscuit: Morning walk: no 25-minute gap remains.
+Skipped Mochi: Enrichment: no 10-minute gap remains.
+Skipped Biscuit: Grooming: no 20-minute gap remains.
+Skipped Mochi: Restock food: no 15-minute gap remains.
+Conflict: Mochi: Breakfast appointment (08:00-08:20) overlaps Biscuit: Bath (08:15-08:30).
+Resolve the overlapping fixed times before following this plan.
+Reserved clock time: 40/45 min.
+
+Recurring task check:
+Completed: Refresh water, due 2026-10-29
+Next: Refresh water, due 2026-10-30, completed=False
+Next occurrence count: 1
 ```
 
 ## 🧪 Testing PawPal+
@@ -89,21 +117,26 @@ These initial tests do not exhaustively verify the scheduler's recurrence and ti
 
 ## 📐 Smarter Scheduling
 
-The core scheduler is implemented and exercised by the terminal demo.
+| Feature | Method(s) | Behavior |
+|---------|-----------|----------|
+| Time sorting | `Scheduler.sort_by_time()` | Sorts pet/task pairs by optional fixed clock time; automatic tasks come last. Uses Python time objects and stable `sorted()`. |
+| Filtering | `Scheduler.filter_tasks()` | Filters by case-insensitive pet name, completion status, or both. Defaults to the planning date. Incomplete tasks may include future occurrences. |
+| Planning | `Scheduler.generate_plan()` | Reserves fixed appointments inside the planning window first, then places flexible tasks in gaps using priority and preferences. |
+| Conflict detection | `Scheduler.detect_conflicts()` | Warns about overlapping durations across the same or different pets. Adjacent intervals are allowed. Conflicting fixed tasks stay visible for the owner to resolve. |
+| Recurrence | `Task.mark_complete()`, `Scheduler.mark_task_complete()` | Creates and attaches a new task for completion date +1 day (daily) or +7 days (weekly). One-time tasks do not repeat. Duplicate completion does not add another copy. |
 
-| Feature | Method(s) | Notes |
-|---------|-----------|-------|
-| Task sorting | `Scheduler.generate_plan()` | High priority first; preferred titles break ties, then pet/task entry order. |
-| Filtering | `Task.is_due()`, `Task.is_completed()`, `Scheduler.generate_plan()` | Skip completed, not-due, or oversized tasks; continue considering smaller tasks. |
-| Conflict handling | `Scheduler.generate_plan()` | Place tasks consecutively from the owner's start time within the minute budget. Fixed appointment times are not supported. |
-| Recurring tasks | `Task.is_due()`, `Task.mark_complete()` | Daily, weekly on a selected weekday, or one-time. Completion is tracked by date; overdue one-time tasks remain due. |
+Each task is an individual occurrence with a due date. Unfinished overdue occurrences remain eligible. Completing a late weekly task shifts the next occurrence to seven days after completion. Copies retain the title, description, duration, priority, frequency, and fixed time.
+
+Use `Scheduler.mark_task_complete(pet, task)` in the UI and CLI: it both completes the occurrence and adds the returned next task to the pet. Calling `Task.mark_complete()` alone returns the new task but does not attach it.
+
+Conflict detection keeps explicit loops for readability and stops the inner loop once later start times cannot overlap. Its worst-case cost is O(n²), which is acceptable for a small daily schedule. Time sorting is O(n log n), and filtering is O(n). Warnings do not automatically resolve conflicts. Reserved clock time counts the union of occupied intervals, so overlaps are counted only once.
 
 ## 📸 Demo Walkthrough
 
 1. Open a terminal in the repository folder with Python 3.10 or newer available.
 2. Run `py main.py` on Windows, or `python main.py` on other platforms.
-3. The demo creates Jordan, Biscuit, and Mochi, adds six care tasks, and marks the water task complete.
-4. Read the timed schedule and the reasons for including or skipping each task.
+3. The demo creates two pets, adds fixed tasks out of order, and completes a daily water task to create its next occurrence.
+4. Read the time-sorted list, incomplete-task filter, intentional conflict warning, and next-occurrence check.
 5. Run `py -m pytest` to check completion and task addition.
 
-Phase 2 uses the terminal. All data is in memory and the demo starts fresh each run; the Streamlit interface will be connected in a later phase.
+For the browser app, run `py -m streamlit run app.py`. Add pets and tasks, optionally set fixed times, generate a plan, and mark tasks complete. The Owner object is stored in Streamlit session state between interactions. All data is in memory; restarting or reloading the session may reset it.
