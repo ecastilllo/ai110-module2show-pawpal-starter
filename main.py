@@ -32,10 +32,10 @@ def main() -> None:
     print("Tasks sorted by fixed time (automatic tasks last):")
     for pet, task in scheduler.sort_by_time():
         clock = task.fixed_start_time.strftime("%H:%M") if task.fixed_start_time else "Automatic"
-        print(f"{clock} | {pet.name}: {task.title}")
+        print(f"{clock} | {pet.name}: {task.title} | due {task.due_date} | completed={task.completed}")
     print("\nIncomplete tasks for Mochi:")
     for pet, task in scheduler.filter_tasks(pet_name="Mochi", completed=False):
-        print(f"- {pet.name}: {task.title}")
+        print(f"- {pet.name}: {task.title} | due {task.due_date}")
     print()
     plan = scheduler.generate_plan()
     print(f"Today's Schedule - {today.isoformat()}")
