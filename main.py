@@ -22,7 +22,7 @@ def main() -> None:
 
     completed_task = Task("Refresh water", 5, "high")
     mochi.add_task(completed_task)
-    completed_task.mark_complete()
+    Scheduler(owner).mark_task_complete(mochi, completed_task)
 
     # Deliberately add fixed tasks out of chronological order.
     biscuit.add_task(Task("Bath", 15, "medium", fixed_start_time=time(8, 15)))
@@ -51,6 +51,11 @@ def main() -> None:
         print("No tasks scheduled.")
     print("\nWhy this plan:")
     print(scheduler.explain_plan())
+    print("\nRecurring task check:")
+    next_task = scheduler.mark_task_complete(mochi, completed_task)
+    print(f"Completed: {completed_task.title}, due {completed_task.due_date}")
+    print(f"Next: {next_task.title}, due {next_task.due_date}, completed={next_task.completed}")
+    print(f"Next occurrence count: {sum(task is next_task for task in mochi.tasks)}")
 
 
 if __name__ == "__main__":
