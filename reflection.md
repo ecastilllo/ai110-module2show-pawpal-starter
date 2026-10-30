@@ -10,19 +10,19 @@
 
 **a. Initial design**
 
-The initial design uses four classes. Owner stores the owner's name, available minutes, planning start date and time, preferred task titles, and pets. Pet stores a pet's name, species, and care tasks. Task stores a care activity's title, duration in minutes, and priority (low, medium, or high). Scheduler uses the owner's time window and the pets' tasks to build and explain a daily plan.
+My initial design has four classes: Owner, Pet, Task, and Scheduler. Owner holds the owner's name, pets, preferences, and the time they have available for pet care, including when they want to start. Pet holds the pet's name, species, and care tasks. Task holds the details of each activity, like feeding or walking, including how long it takes and its priority.
 
-An owner can have multiple pets, and each task instance belongs to one pet. Pet and Task use Python dataclasses, with a separate task list for each pet. The Mermaid blueprint is saved in `diagrams/uml.mmd`; matching class skeletons are in `pawpal_system.py`.
+The Scheduler's job is to take those tasks and organize them into a plan that fits the owner's available time. It will decide which tasks can fit, give them actual start and end times, and explain why they were included or left out. Higher-priority tasks will come first, and the owner's preferences will help decide between tasks with the same priority.
 
-Each schedule entry will retain the pet, task, start datetime, and end datetime. The scheduler is intended to select higher-priority tasks first, use preferred task titles to break equal-priority ties, and place selected tasks consecutively within the available time. The behavior methods are empty in Phase 1.
+An owner can have more than one pet, so each pet has its own tasks. Pet and Task use Python dataclasses to keep the code simple. The UML diagram is saved in `diagrams/uml.mmd`, and the matching class skeletons are in `pawpal_system.py`. At this point, the classes have their attributes and empty methods. The scheduling logic comes next.
 
 **b. Design changes**
 
-During the Phase 1 design review, the first draft returned only an ordered list of tasks. After comparing that approach with the README's sample clock times, we revised the design to include a planning start datetime and start/end datetimes for each scheduled task. This makes the plan easier to follow and supports checking for overlaps.
+The first draft was going to create an ordered list of tasks. After discussing that option with AI and looking at the README's sample output, I chose to use actual times. I prefer a schedule with actual times because it adds a layer of organization that is needed for this pet service. I think of dogs as creatures of routine, so a set schedule would be more useful for keeping their care consistent.
 
-The AI review also identified that a schedule covering multiple pets must preserve which pet each task is for. Each schedule entry therefore includes the pet along with the task and its times. This keeps the four-class design while making the output unambiguous.
+To support this, we added a starting date and time to Owner and start and end times to each entry in the schedule. The plan is for tasks to run one after another so they do not overlap or go beyond the owner's available time.
 
-These are design-stage refinements; scheduling logic has not been implemented or tested yet.
+During the AI review, we also made sure each scheduled task keeps track of which pet it belongs to. This matters if an owner has multiple pets, since a task like feeding needs to show which pet it is for. These changes were made during the design stage. I have checked the Python file for syntax errors, but the scheduling methods are still empty, so the scheduling behavior has not been tested yet.
 
 ---
 
