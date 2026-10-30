@@ -7,6 +7,7 @@ classDiagram
         +list~Pet~ pets
         +add_pet(pet) None
         +update_preferences(preferences) None
+        +get_all_tasks() list~tuple~
     }
 
     class Pet {
@@ -23,7 +24,16 @@ classDiagram
         +str title
         +int duration_minutes
         +str priority
+        +str description
+        +str frequency
+        +int weekday
+        +date due_date
+        +set~date~ completed_dates
+        +bool completed
         +update_details(title, duration_minutes, priority) None
+        +is_completed(on_date) bool
+        +is_due(on_date) bool
+        +mark_complete(on_date) None
     }
 
     class Scheduler {
@@ -48,4 +58,10 @@ classDiagram
     %% Each schedule tuple is (pet, task, start_datetime, end_datetime).
     %% The schedule contains consecutive, non-overlapping tasks within the time budget.
     %% End time equals start time plus task duration; the next task starts there.
-    %% Fixed appointments and recurrence are outside this initial design.
+    %% get_all_tasks returns (pet, task) pairs across the owner's pets.
+    %% Frequency is daily, weekly, or once; weekly uses weekday (Monday=0).
+    %% Only one-time tasks have due_date; unfinished overdue tasks remain due.
+    %% weekday and due_date are optional and depend on the frequency.
+    %% completed is a property for today's status (permanent for one-time tasks).
+    %% completed_dates tracks occurrences without hiding future recurring tasks.
+    %% All data is in memory; fixed appointment times and persistence are not implemented.
