@@ -27,19 +27,24 @@ classDiagram
         +str description
         +str frequency
         +int weekday
+        +time fixed_start_time
         +date due_date
         +set~date~ completed_dates
         +bool completed
         +update_details(title, duration_minutes, priority) None
         +is_completed(on_date) bool
         +is_due(on_date) bool
-        +mark_complete(on_date) None
+        +mark_complete(on_date) Task_or_None
     }
 
     class Scheduler {
         +Owner owner
         +list~tuple~ schedule
         +str explanation
+        +sort_by_time(tasks) list~tuple~
+        +filter_tasks(pet_name, completed, on_date) list~tuple~
+        +detect_conflicts(schedule) list~str~
+        +mark_task_complete(pet, task, on_date) Task_or_None
         +generate_plan() list~tuple~
         +explain_plan() str
     }
@@ -56,12 +61,11 @@ classDiagram
     %% Preferences are preferred task titles used to break equal-priority ties.
     %% Each Task instance belongs to one Pet.
     %% Each schedule tuple is (pet, task, start_datetime, end_datetime).
-    %% The schedule contains consecutive, non-overlapping tasks within the time budget.
-    %% End time equals start time plus task duration; the next task starts there.
-    %% get_all_tasks returns (pet, task) pairs across the owner's pets.
-    %% Frequency is daily, weekly, or once; weekly uses weekday (Monday=0).
-    %% Only one-time tasks have due_date; unfinished overdue tasks remain due.
-    %% weekday and due_date are optional and depend on the frequency.
-    %% completed is a property for today's status (permanent for one-time tasks).
-    %% completed_dates tracks occurrences without hiding future recurring tasks.
-    %% All data is in memory; fixed appointment times and persistence are not implemented.
+    %% Fixed appointments are reserved first; flexible tasks fill remaining gaps.
+    %% Conflicting fixed appointments remain visible with warnings.
+    %% Each task is one occurrence with a due date and optional fixed clock time.
+    %% mark_complete returns a next occurrence for daily/weekly tasks, or None.
+    %% Scheduler.mark_task_complete attaches it to the pet without duplicates.
+    %% Next due date is completion date +1 day (daily) or +7 days (weekly).
+    %% completed reports this occurrence's status; is_completed checks as of a date.
+    %% All data is in memory; persistence is not implemented.
