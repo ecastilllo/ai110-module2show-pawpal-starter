@@ -1,0 +1,78 @@
+classDiagram
+    class Owner {
+        +str name
+        +int available_minutes
+        +datetime start_time
+        +list~str~ preferences
+        +list~Pet~ pets
+        +add_pet(pet) None
+        +update_preferences(preferences) None
+        +get_all_tasks() list~tuple~
+    }
+
+    class Pet {
+        <<dataclass>>
+        +str name
+        +str species
+        +list~Task~ tasks
+        +add_task(task) None
+        +remove_task(task) None
+    }
+
+    class Task {
+        <<dataclass>>
+        +str title
+        +int duration_minutes
+        +str priority
+        +str description
+        +str frequency
+        +int weekday
+        +time fixed_start_time
+        +date due_date
+        +set~date~ completed_dates
+        +bool completed
+        -Task _next_occurrence
+        +update_details(title, duration_minutes, priority) None
+        +is_completed(on_date) bool
+        +is_due(on_date) bool
+        +mark_complete(on_date) Task_or_None
+    }
+
+    class Scheduler {
+        +Owner owner
+        +list~tuple~ schedule
+        +str explanation
+        +sort_by_time(tasks) list~tuple~
+        +filter_tasks(pet_name, completed, on_date) list~tuple~
+        +detect_conflicts(schedule) list~str~
+        +mark_task_complete(pet, task, on_date) Task_or_None
+        +generate_plan() list~tuple~
+        +explain_plan() str
+    }
+
+    Task "1" --> "0..1" Task : next occurrence
+    Owner "1" --> "0..*" Pet : has
+    Pet "1" --> "0..*" Task : has
+    Scheduler --> "1" Owner : uses time and preferences from
+    Scheduler --> "0..*" Pet : identifies pet for each entry
+    Scheduler --> "0..*" Task : selects and assigns times
+
+    %% Duration and availability are measured in minutes.
+    %% start_time includes the planning date and clock time (Python datetime).
+    %% Priority is low, medium, or high.
+    %% Preferences are preferred task titles used to break equal-priority ties.
+    %% Each Task instance belongs to one Pet.
+    %% Each schedule tuple is (pet, task, start_datetime, end_datetime).
+    %% Fixed appointments are reserved first; flexible tasks fill remaining gaps.
+    %% Conflicting fixed appointments remain visible with warnings.
+    %% Each task is one occurrence with a due date and optional fixed clock time.
+    %% mark_complete returns a next occurrence for daily/weekly tasks, or None.
+    %% Scheduler.mark_task_complete attaches it to the pet without duplicates.
+    %% Next due date is completion date +1 day (daily) or +7 days (weekly).
+    %% completed reports this occurrence's status; is_completed checks as of a date.
+    %% All data is in memory; persistence is not implemented.
+
+    %% Public domain methods are shown; constructors and validation helpers are omitted.
+    %% weekday, fixed_start_time, and _next_occurrence may be None.
+    %% due_date is optional at construction and populated during validation.
+    %% completed is a computed property; Task_or_None denotes an optional return.
