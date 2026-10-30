@@ -2,6 +2,12 @@
 
 ## 1. System Design
 
+**Three core user actions**
+
+1. Add owner and pet information so care tasks can be associated with the correct pet.
+2. Add or edit pet care tasks, including a title, duration in minutes, and priority (low, medium, or high).
+3. Generate and view today's care plan based on the owner's available time and task priorities, with an explanation of the selections.
+
 **a. Initial design**
 
 - Briefly describe your initial UML design.
