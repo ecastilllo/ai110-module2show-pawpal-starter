@@ -67,39 +67,43 @@ Time used: 45/45 min; 0 min remaining.
 
 ## 🧪 Testing PawPal+
 
-```bash
-# Run the full test suite:
-pytest
-
-# Run with coverage:
-pytest --cov
+```powershell
+# Windows: install and run the initial tests
+py -m pip install pytest
+py -m pytest
 ```
 
-Sample test output:
+On other platforms, use `python -m pytest`. Optional coverage requires installing `pytest-cov` before running `python -m pytest --cov=pawpal_system`.
 
+Verified on Windows with Python 3.11.3 and pytest 9.2.0. The two initial tests cover task completion and adding a task to a pet.
+
+```text
+collected 2 items
+
+tests\test_pawpal.py ..                                             [100%]
+
+=========================== 2 passed in 0.01s ============================
 ```
-# Paste your pytest output here
-```
+
+These initial tests do not exhaustively verify the scheduler's recurrence and time-budget behavior.
 
 ## 📐 Smarter Scheduling
 
-> Fill in once you've implemented scheduling logic.
+The core scheduler is implemented and exercised by the terminal demo.
 
 | Feature | Method(s) | Notes |
 |---------|-----------|-------|
-| Task sorting | | e.g., by priority, duration |
-| Filtering | | e.g., skip tasks if time runs out |
-| Conflict handling | | e.g., overlapping time slots |
-| Recurring tasks | | e.g., daily vs. weekly |
+| Task sorting | `Scheduler.generate_plan()` | High priority first; preferred titles break ties, then pet/task entry order. |
+| Filtering | `Task.is_due()`, `Task.is_completed()`, `Scheduler.generate_plan()` | Skip completed, not-due, or oversized tasks; continue considering smaller tasks. |
+| Conflict handling | `Scheduler.generate_plan()` | Place tasks consecutively from the owner's start time within the minute budget. Fixed appointment times are not supported. |
+| Recurring tasks | `Task.is_due()`, `Task.mark_complete()` | Daily, weekly on a selected weekday, or one-time. Completion is tracked by date; overdue one-time tasks remain due. |
 
 ## 📸 Demo Walkthrough
 
-Describe your app in numbered steps so a reader can follow along without watching a video:
+1. Open a terminal in the repository folder with Python 3.10 or newer available.
+2. Run `py main.py` on Windows, or `python main.py` on other platforms.
+3. The demo creates Jordan, Biscuit, and Mochi, adds six care tasks, and marks the water task complete.
+4. Read the timed schedule and the reasons for including or skipping each task.
+5. Run `py -m pytest` to check completion and task addition.
 
-1. <!-- Describe this step -->
-2. <!-- Describe this step -->
-3. <!-- Describe this step -->
-4. <!-- Describe this step -->
-5. <!-- Add more steps as needed -->
-
-**Screenshot or video** *(optional)*: <!-- Insert a screenshot or link to a demo video here -->
+Phase 2 uses the terminal. All data is in memory and the demo starts fresh each run; the Streamlit interface will be connected in a later phase.
