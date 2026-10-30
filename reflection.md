@@ -80,12 +80,12 @@ With more time, I would test larger task lists, schedules that cross midnight, a
 
 **a. What went well**
 
-- What part of this project are you most satisfied with?
+I'm most satisfied with turning the original idea into a working app that organizes pet care with actual times, recurring tasks, and conflict warnings.
 
 **b. What you would improve**
 
-- If you had another iteration, what would you improve or redesign?
+Next, I would add a way to save pets and tasks so owners don't lose their information when the app restarts.
 
 **c. Key takeaway**
 
-- What is one important thing you learned about designing systems or working with AI on this project?
+Working with AI taught me that being the lead architect means making the decisions, explaining what I want, and checking the results instead of assuming every suggestion is correct. Going phase by phase and running the tests helped me stay organized and understand how the pieces fit together.
