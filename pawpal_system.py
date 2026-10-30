@@ -41,6 +41,7 @@ class Task:
     due_date: date | None = None
     fixed_start_time: time | None = None
     completed_dates: set[date] = field(default_factory=set, init=False, repr=False)
+    _next_occurrence: Task | None = field(default=None, init=False, repr=False)
 
     def __post_init__(self) -> None:
         """Validate task details and set a default date for one-time tasks."""
@@ -56,13 +57,14 @@ class Task:
                 raise ValueError("Weekly tasks need a weekday: Monday=0 through Sunday=6.")
         elif self.weekday is not None:
             raise ValueError("Only weekly tasks use a weekday.")
-        if self.frequency == "once":
-            if self.due_date is None:
-                self.due_date = date.today()
-            if type(self.due_date) is not date:
-                raise ValueError("A one-time task needs a date, not a datetime.")
-        elif self.due_date is not None:
-            raise ValueError("Only one-time tasks use a due date.")
+        if self.due_date is None:
+            self.due_date = date.today()
+            if self.frequency == "weekly":
+                self.due_date += timedelta(days=(self.weekday - self.due_date.weekday()) % 7)
+        if type(self.due_date) is not date:
+            raise ValueError("A task occurrence needs a date, not a datetime.")
+        if self.frequency == "weekly" and self.due_date.weekday() != self.weekday:
+            raise ValueError("The weekly due date must match the selected weekday.")
 
     @staticmethod
     def _validate_details(title: str, duration_minutes: int, priority: Priority) -> None:
@@ -81,35 +83,36 @@ class Task:
 
     @property
     def completed(self) -> bool:
-        """Report today's completion status, or permanent completion for one-time tasks."""
-        return self.is_completed(date.today())
+        """Report whether this individual occurrence has been completed."""
+        return bool(self.completed_dates)
 
     def is_completed(self, on_date: date) -> bool:
-        """Check completion for a particular date without resetting recurring tasks."""
-        if self.frequency == "once":
-            return bool(self.completed_dates)
-        return on_date in self.completed_dates
+        """Report whether this occurrence was completed on or before the requested date."""
+        return any(day <= on_date for day in self.completed_dates)
 
     def is_due(self, on_date: date) -> bool:
-        """Report whether this task is due and unfinished on the given date."""
-        if self.is_completed(on_date):
-            return False
-        if self.frequency == "weekly":
-            return on_date.weekday() == self.weekday
-        if self.frequency == "once":
-            return self.due_date is not None and on_date >= self.due_date
-        return True
+        """Report whether this unfinished occurrence is due or overdue."""
+        return not self.completed and on_date >= self.due_date
 
-    def mark_complete(self, on_date: date | None = None) -> None:
-        """Complete a due occurrence, defaulting to today; repeated calls are harmless."""
+    def mark_complete(self, on_date: date | None = None) -> Task | None:
+        """Complete this occurrence and return its next recurrence without duplicating it."""
         completion_date = date.today() if on_date is None else on_date
         if type(completion_date) is not date:
             raise ValueError("Completion date must be a date, not a datetime.")
-        if self.is_completed(completion_date):
-            return
+        if self.completed:
+            return self._next_occurrence
         if not self.is_due(completion_date):
             raise ValueError("This task is not due on the completion date.")
+        if self.frequency != "once":
+            next_date = completion_date + timedelta(days=1 if self.frequency == "daily" else 7)
+            self._next_occurrence = Task(
+                self.title, self.duration_minutes, self.priority,
+                description=self.description, frequency=self.frequency,
+                weekday=next_date.weekday() if self.frequency == "weekly" else None,
+                due_date=next_date, fixed_start_time=self.fixed_start_time,
+            )
         self.completed_dates.add(completion_date)
+        return self._next_occurrence
 
 
 @dataclass(eq=False)
@@ -204,6 +207,17 @@ class Scheduler:
         self.owner = owner
         self.schedule: list[tuple[Pet, Task, datetime, datetime]] = []
         self.explanation: str = ""
+
+    def mark_task_complete(self, pet: Pet, task: Task, on_date: date | None = None) -> Task | None:
+        """Complete an owned task and attach its next occurrence without duplicates."""
+        if pet not in self.owner.pets or task not in pet.tasks:
+            raise ValueError("The task must belong to one of this owner's pets.")
+        next_task = task.mark_complete(self.owner.start_time.date() if on_date is None else on_date)
+        if next_task is not None:
+            pet.add_task(next_task)
+        self.schedule = []
+        self.explanation = ""
+        return next_task
 
     def sort_by_time(self, tasks=None) -> list[tuple[Pet, Task]]:
         """Return pet/task pairs ordered by fixed time, with flexible tasks last."""
