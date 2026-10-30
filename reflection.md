@@ -14,7 +14,7 @@ My initial design has four classes: Owner, Pet, Task, and Scheduler. Owner holds
 
 The Scheduler's job is to take those tasks and organize them into a plan that fits the owner's available time. It will decide which tasks can fit, give them actual start and end times, and explain why they were included or left out. Higher-priority tasks will come first, and the owner's preferences will help decide between tasks with the same priority.
 
-An owner can have more than one pet, so each pet has its own tasks. Pet and Task use Python dataclasses to keep the code simple. The UML diagram is saved in `diagrams/uml.mmd`, and the matching class skeletons are in `pawpal_system.py`. At this point, the classes have their attributes and empty methods. The scheduling logic comes next.
+An owner can have more than one pet, so each pet has its own tasks. Pet and Task use Python dataclasses to keep the code simple. The UML diagram is saved in `diagrams/uml.mmd`, and the matching class skeletons are in `pawpal_system.py`. At the end of Phase 1, the classes had their attributes and empty methods. The scheduling logic was added in later phases.
 
 **b. Design changes**
 
@@ -22,7 +22,9 @@ The first draft was going to create an ordered list of tasks. After discussing t
 
 To support this, we added a starting date and time to Owner and start and end times to each entry in the schedule. The plan is for tasks to run one after another so they do not overlap or go beyond the owner's available time.
 
-During the AI review, we also made sure each scheduled task keeps track of which pet it belongs to. This matters if an owner has multiple pets, since a task like feeding needs to show which pet it is for. These changes were made during the design stage. I have checked the Python file for syntax errors, but the scheduling methods are still empty, so the scheduling behavior has not been tested yet.
+During the AI review, we also made sure each scheduled task keeps track of which pet it belongs to. This matters if an owner has multiple pets, since a task like feeding needs to show which pet it is for. These changes were made during the design stage. At that stage, I had checked Python syntax, but the scheduling methods were still empty. Since then, I ran the CLI demo, checked the browser interactions, and confirmed the two initial pytest tests passed.
+
+In Phase 4, we added optional fixed start times, pet/status filters, and overlap warnings. We also changed recurrence from reusing one task to keeping the completed occurrence and creating a separate next occurrence. This makes the due dates and completion history easier to distinguish.
 
 ---
 
@@ -30,13 +32,13 @@ During the AI review, we also made sure each scheduled task keeps track of which
 
 **a. Constraints and priorities**
 
-- What constraints does your scheduler consider (for example: time, priority, preferences)?
-- How did you decide which constraints mattered most?
+My scheduler considers the planning date, available time, fixed appointments, task duration, completion status, priority, and owner preferences. Fixed appointments are reserved first, and flexible tasks are placed in the remaining gaps. Higher-priority flexible tasks come first, with preferences used to break ties. This keeps the plan organized around the time the owner actually has available.
 
 **b. Tradeoffs**
 
-- Describe one tradeoff your scheduler makes.
-- Why is that tradeoff reasonable for this scenario?
+One tradeoff is that the scheduler warns about overlapping fixed appointments instead of automatically changing their times. I want the owner to see the problem and decide what to move, since a fixed time may be important for the pet's routine. The schedule still displays those appointments, so a warning means the owner needs to resolve the overlap before following the plan.
+
+I also compared the conflict-detection loops with a shorter list comprehension suggested by AI. I chose to keep the explicit loops because they are easier to follow and can stop checking once later tasks cannot overlap. They can still compare every pair in the worst case, but that is reasonable for a small pet-care schedule. I would rather understand the code than make it shorter just for the sake of it.
 
 ---
 
