@@ -6,17 +6,23 @@
 
 1. Add owner and pet information so care tasks can be associated with the correct pet.
 2. Add or edit pet care tasks, including a title, duration in minutes, and priority (low, medium, or high).
-3. Generate and view today's care plan based on the owner's available time and task priorities, with an explanation of the selections.
+3. Generate and view today's care plan with actual start and end times, based on the owner's planning start time, available minutes, and task priorities, with an explanation of the selections.
 
 **a. Initial design**
 
-- Briefly describe your initial UML design.
-- What classes did you include, and what responsibilities did you assign to each?
+The initial design uses four classes. Owner stores the owner's name, available minutes, planning start date and time, preferred task titles, and pets. Pet stores a pet's name, species, and care tasks. Task stores a care activity's title, duration in minutes, and priority (low, medium, or high). Scheduler uses the owner's time window and the pets' tasks to build and explain a daily plan.
+
+An owner can have multiple pets, and each task instance belongs to one pet. Pet and Task use Python dataclasses, with a separate task list for each pet. The Mermaid blueprint is saved in `diagrams/uml.mmd`; matching class skeletons are in `pawpal_system.py`.
+
+Each schedule entry will retain the pet, task, start datetime, and end datetime. The scheduler is intended to select higher-priority tasks first, use preferred task titles to break equal-priority ties, and place selected tasks consecutively within the available time. The behavior methods are empty in Phase 1.
 
 **b. Design changes**
 
-- Did your design change during implementation?
-- If yes, describe at least one change and why you made it.
+During the Phase 1 design review, the first draft returned only an ordered list of tasks. After comparing that approach with the README's sample clock times, we revised the design to include a planning start datetime and start/end datetimes for each scheduled task. This makes the plan easier to follow and supports checking for overlaps.
+
+The AI review also identified that a schedule covering multiple pets must preserve which pet each task is for. Each schedule entry therefore includes the pet along with the task and its times. This keeps the four-class design while making the output unambiguous.
+
+These are design-stage refinements; scheduling logic has not been implemented or tested yet.
 
 ---
 
