@@ -1,15 +1,45 @@
 classDiagram
-    %% Replace the placeholders below with your actual classes, attributes, methods, and relationships.
-    %% Keep this file updated so it matches your final implementation.
-
-    class ClassName {
-        +type attribute
-        +method() returnType
+    class Owner {
+        +str name
+        +int available_minutes
+        +list~str~ preferences
+        +list~Pet~ pets
+        +add_pet(pet) None
+        +update_preferences(preferences) None
     }
 
-    class AnotherClass {
-        +type attribute
-        +method() returnType
+    class Pet {
+        <<dataclass>>
+        +str name
+        +str species
+        +list~Task~ tasks
+        +add_task(task) None
+        +remove_task(task) None
     }
 
-    ClassName --> AnotherClass : relationship
+    class Task {
+        <<dataclass>>
+        +str title
+        +int duration_minutes
+        +str priority
+        +update_details(title, duration_minutes, priority) None
+    }
+
+    class Scheduler {
+        +Owner owner
+        +list~Task~ selected_tasks
+        +str explanation
+        +generate_plan() list~Task~
+        +explain_plan() str
+    }
+
+    Owner "1" --> "0..*" Pet : has
+    Pet "1" --> "0..*" Task : has
+    Scheduler --> "1" Owner : uses constraints from
+    Scheduler --> "0..*" Task : selects and orders
+
+    %% Duration and availability are measured in minutes.
+    %% Priority is low, medium, or high.
+    %% Preferences are preferred task titles used to break equal-priority ties.
+    %% Each Task instance belongs to one Pet.
+    %% A plan is an ordered list of tasks within the available time budget.
